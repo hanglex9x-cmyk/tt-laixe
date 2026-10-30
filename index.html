@@ -63,6 +63,7 @@ main{flex:1;min-width:0;padding:12px 12px 96px}
 .btn-green-grad{background:linear-gradient(135deg,var(--brandL,#00C853) 0%,var(--brandA) 45%,var(--brandB) 100%);box-shadow:0 5px 16px rgba(0,150,70,.38),inset 0 1px 0 rgba(255,255,255,.35);color:#fff}
 .law-box{margin-top:12px;border-radius:12px;background:#E8F5E9;padding:12px;font-size:12px;line-height:1.6}
 .law-box p{margin:0}
+.sec-foot{font-size:11.5px;line-height:1.55;color:#3F5A49;background:#F2F8F3;border:1px solid #DCE8DF;border-radius:12px;padding:9px 11px}
 .drawer-wrap{position:fixed;inset:0;z-index:50}
 @media(min-width:768px){.drawer-wrap{display:none}}
 .drawer-bg{position:absolute;inset:0;background:rgba(6,61,32,.45);border:none;width:100%;height:100%}
@@ -310,7 +311,7 @@ ul.disc{list-style:disc;padding-left:20px;margin:0;display:flex;flex-direction:c
    ===================================================================== */
 
 // ---------- Cấu hình API (GIỮ NGUYÊN) ----------
-const DEFAULT_API_URL = ''; // BẢN DEMO: toàn bộ dữ liệu do demo-data.js cung cấp (dữ liệu mẫu hư cấu)
+const DEFAULT_API_URL = ''; // BẢN DEMO: dữ liệu mẫu trong demo-data.js; khi khách kết nối Sheet riêng thì dùng link Web App của họ
 const API_URL = (() => {
   const q = new URLSearchParams(location.search).get('api');
   if (q) { try { localStorage.setItem('hp_api_url', q); } catch (e) {} return q; }
@@ -765,6 +766,7 @@ function renderShell() {
         <p style="font-weight:700;color:#00893D">Luật mới TT 108/2026</p>
         <p>Kỳ thi sát hạch chỉ còn 3 phần theo thứ tự bắt buộc. Đủ điều kiện thi = đạt 5 tiêu chí: Lý thuyết · Cabin 3h/3h · DAT đủ km · Sa hình đủ bài · Học phí đủ.</p>
       </div>
+      <div class="sec-foot" style="margin-top:12px">🔒 Dữ liệu được lưu an toàn trên <b>Google Sheet riêng của trung tâm</b> — Bảo mật 100% — Không tốn phí duy trì hàng tháng</div>
     </aside>
     <div id="drawer-root"></div>
     <main id="view"><p class="loading">Đang tải dữ liệu…</p></main>
@@ -818,6 +820,7 @@ function openDrawer() {
         <button type="button" class="modal-x" aria-label="Đóng" onclick="closeDrawer()">×</button>
       </div>
       ${VIEWS.map(v => navBtn(v)).join('')}
+      <div class="sec-foot" style="margin-top:12px">🔒 Dữ liệu được lưu an toàn trên <b>Google Sheet riêng của trung tâm</b> — Bảo mật 100% — Không tốn phí duy trì hàng tháng</div>
     </div>
   </div>`;
 }
@@ -3356,6 +3359,89 @@ function cfgLogoFile_(ev) {
   img.src = url;
 }
 function cfgLogoClear_() { pendingLogo_ = ''; const pv = document.getElementById('cfg-logo-preview'); if (pv) pv.innerHTML = Logo(52); toast('Đã bỏ logo riêng — bấm Lưu để dùng logo mặc định'); }
+const TEMPLATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1bC5ejH0_W3gmi5tBkSf6pwSiItCZbYdc2-ZAKHUu9oo/edit';
+function connState_() { try { return { url: localStorage.getItem('hp_api_url') || '', sid: localStorage.getItem('tt_sheet_id') || '' }; } catch (e) { return { url: '', sid: '' }; } }
+function sheetIdFrom_(v) { const m = String(v || '').match(/\/d\/([a-zA-Z0-9-_]{20,})/); if (m) return m[1]; const t = String(v || '').trim(); return /^[a-zA-Z0-9-_]{20,}$/.test(t) ? t : ''; }
+function connBoxHtml_() {
+  const c = connState_();
+  const connected = !!c.url;
+  return `<div style="border-top:1.5px dashed #DCE8DF;margin-top:16px;padding-top:14px">
+    <p style="font-weight:800;font-size:16px;margin:0">🔗 Kết nối Google Sheet của bạn</p>
+    <p style="color:var(--dim);font-size:13.5px;margin:6px 0 0;line-height:1.55">Dữ liệu của trung tâm được lưu trên <b>Google Sheet riêng của trung tâm</b> (tài khoản Google của anh/chị tự quản lý) — <b>không lưu chung trên máy chủ của bên em</b>. App đọc/ghi trực tiếp lên Sheet đó qua liên kết Web App do chính tài khoản của trung tâm cấp phép.</p>
+    <p style="margin:10px 0 0;font-size:13.5px">${connected ? '🟢 <b>Đang kết nối Sheet riêng</b> — app đang đọc/ghi trên Google Sheet của trung tâm.' : '⚪ <b>Chưa kết nối Sheet riêng</b> — app đang dùng nguồn dữ liệu mặc định của bản cài đặt này.'}</p>
+    <div class="stack" style="margin-top:10px">
+      <label style="display:block"><span style="font-weight:700;font-size:14px">Link Google Sheet của trung tâm (hoặc dán Sheet ID)</span>
+        <input id="conn-sheet" type="text" value="${esc(c.sid ? 'https://docs.google.com/spreadsheets/d/' + c.sid + '/edit' : '')}" placeholder="VD: https://docs.google.com/spreadsheets/d/.../edit" style="width:100%;margin-top:6px"></label>
+      <label style="display:block"><span style="font-weight:700;font-size:14px">Link Web App (Apps Script) của Sheet đó</span>
+        <input id="conn-url" type="text" value="${esc(c.url)}" placeholder="VD: https://script.google.com/macros/s/.../exec" style="width:100%;margin-top:6px"></label>
+    </div>
+    <div class="row-wrap" style="margin-top:10px">
+      <button type="button" class="btn btn-green-grad" onclick="connConnect_()">🔗 Kết nối Google Sheet của bạn</button>
+      <button type="button" class="btn" onclick="connTest_()">Kiểm tra kết nối</button>
+      ${connected ? '<button type="button" class="btn" onclick="connReset_()">Ngắt kết nối</button>' : ''}
+      ${c.sid ? `<a class="btn" href="https://docs.google.com/spreadsheets/d/${c.sid}/edit" target="_blank" rel="noopener">Mở Sheet của tôi ↗</a>` : ''}
+    </div>
+    <p id="conn-note" style="font-size:13.5px;margin:8px 0 0"></p>
+    <details style="margin-top:6px">
+      <summary style="font-weight:700;font-size:13.5px;cursor:pointer">Chưa có Sheet / chưa có link Web App? Xem 3 bước tạo (khoảng 5 phút)</summary>
+      <ol style="font-size:13.5px;line-height:1.7;margin:8px 0 0;padding-left:18px;color:var(--dim)">
+        <li>Mở <a href="${TEMPLATE_SHEET_URL}" target="_blank" rel="noopener"><b>Sheet mẫu chuẩn</b></a> → menu Tệp (File) → Tạo bản sao (Make a copy) để lưu về Drive của trung tâm.</li>
+        <li>Trong Sheet vừa sao chép: Tiện ích mở rộng (Extensions) → Apps Script → dán nội dung file Code.gs được bàn giao → Triển khai (Deploy) → Web App, chọn chạy bằng tài khoản của trung tâm và cho phép mọi người có link truy cập.</li>
+        <li>Sao chép link Web App (đuôi <b>/exec</b>) dán vào ô phía trên → bấm <b>Kết nối Google Sheet của bạn</b>.</li>
+      </ol>
+    </details>
+    <p class="sec-foot" style="margin-top:12px">🔒 Dữ liệu được lưu an toàn trên Google Sheet riêng của trung tâm — Bảo mật 100% — Không tốn phí duy trì hàng tháng</p>
+  </div>`;
+}
+function connJsonp_(url, action) {
+  return new Promise((resolve, reject) => {
+    const cb = '__conncb' + Math.floor(Math.random() * 1e9);
+    const sc = document.createElement('script');
+    const to = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 20000);
+    function cleanup() { clearTimeout(to); try { delete window[cb]; } catch (e) {} sc.remove(); }
+    window[cb] = d => { cleanup(); resolve(d); };
+    sc.onerror = () => { cleanup(); reject(new Error('load')); };
+    sc.src = url + (url.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action) + '&callback=' + cb;
+    document.head.appendChild(sc);
+  });
+}
+function connNote_(html, ok) { const n = document.getElementById('conn-note'); if (!n) return; n.innerHTML = html; n.style.color = ok === true ? '#007A38' : ok === false ? '#C62828' : 'var(--dim)'; }
+function connUrlValid_(url) { return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(String(url || '').trim()); }
+async function connTest_() {
+  const url = (document.getElementById('conn-url').value || '').trim();
+  if (!connUrlValid_(url)) { connNote_('⚠️ Link Web App chưa đúng định dạng — phải là link script.google.com/macros/s/.../exec', false); return; }
+  connNote_('Đang kiểm tra kết nối tới Sheet của trung tâm…');
+  try {
+    const r = await connJsonp_(url, 'getdashboard');
+    if (r && r.ok !== false && r.kpis) connNote_('✅ Kết nối tốt — Sheet phản hồi bình thường, tổng số học viên đọc được: <b>' + (r.kpis.totalStudents != null ? r.kpis.totalStudents : '—') + '</b>.', true);
+    else throw new Error('bad');
+  } catch (e) { connNote_('❌ Chưa kết nối được. Anh/chị kiểm tra lại: Web App đã Deploy ở chế độ "Anyone" chưa, link có đúng đuôi /exec không.', false); }
+}
+async function connConnect_() {
+  const url = (document.getElementById('conn-url').value || '').trim();
+  const sid = sheetIdFrom_(document.getElementById('conn-sheet').value || '');
+  if (!connUrlValid_(url)) { connNote_('⚠️ Cần dán đúng Link Web App (script.google.com.../exec) thì app mới đọc/ghi được lên Sheet. Link Sheet ở ô trên chỉ để lưu tham chiếu.', false); return; }
+  connNote_('Đang kiểm tra kết nối trước khi chuyển…');
+  try {
+    const r = await connJsonp_(url, 'getdashboard');
+    if (!r || r.ok === false || !r.kpis) throw new Error('bad');
+  } catch (e) { connNote_('❌ Link Web App chưa phản hồi đúng — chưa chuyển kết nối. Kiểm tra lại Deploy rồi thử lại.', false); return; }
+  try {
+    localStorage.setItem('hp_api_url', url);
+    if (sid) localStorage.setItem('tt_sheet_id', sid); else localStorage.removeItem('tt_sheet_id');
+    const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('hp_swr_')) ks.push(k); } ks.forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  toast('Đã kết nối Google Sheet của trung tâm — đang tải lại app');
+  setTimeout(() => location.reload(), 800);
+}
+function connReset_() {
+  if (!confirm('Ngắt kết nối Sheet riêng? App sẽ quay về nguồn dữ liệu mặc định.')) return;
+  try {
+    localStorage.removeItem('hp_api_url'); localStorage.removeItem('tt_sheet_id');
+    const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('hp_swr_')) ks.push(k); } ks.forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  location.reload();
+}
 async function cfgSave_() {
   CFG = {
     name: (document.getElementById('cfg-name').value || '').trim() || CFG_DEFAULTS.name,
@@ -3406,6 +3492,7 @@ RENDERERS.settings = (main) => {
       </div>
       <div class="row-wrap"><button type="button" class="btn btn-green-grad" onclick="cfgSave_()">💾 Lưu cấu hình &amp; cập nhật banner</button></div>
       <p id="cfg-note" style="color:var(--dim);font-size:13.5px;margin:0"></p>
+      ${connBoxHtml_()}
     </div>
   </div>`)}`;
 };
