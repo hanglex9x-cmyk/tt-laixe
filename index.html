@@ -3360,7 +3360,7 @@ function cfgLogoFile_(ev) {
 }
 function cfgLogoClear_() { pendingLogo_ = ''; const pv = document.getElementById('cfg-logo-preview'); if (pv) pv.innerHTML = Logo(52); toast('Đã bỏ logo riêng — bấm Lưu để dùng logo mặc định'); }
 const TEMPLATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1bC5ejH0_W3gmi5tBkSf6pwSiItCZbYdc2-ZAKHUu9oo/edit';
-function connState_() { try { return { url: localStorage.getItem('hp_api_url') || '', sid: localStorage.getItem('tt_sheet_id') || '' }; } catch (e) { return { url: '', sid: '' }; } }
+function connState_() { try { return { url: localStorage.getItem('hp_api_url') || '', sid: localStorage.getItem('tt_sheet_id') || '', key: localStorage.getItem('tt_act_key') || '' }; } catch (e) { return { url: '', sid: '', key: '' }; } }
 function sheetIdFrom_(v) { const m = String(v || '').match(/\/d\/([a-zA-Z0-9-_]{20,})/); if (m) return m[1]; const t = String(v || '').trim(); return /^[a-zA-Z0-9-_]{20,}$/.test(t) ? t : ''; }
 function connBoxHtml_() {
   const c = connState_();
@@ -3374,6 +3374,8 @@ function connBoxHtml_() {
         <input id="conn-sheet" type="text" value="${esc(c.sid ? 'https://docs.google.com/spreadsheets/d/' + c.sid + '/edit' : '')}" placeholder="VD: https://docs.google.com/spreadsheets/d/.../edit" style="width:100%;margin-top:6px"></label>
       <label style="display:block"><span style="font-weight:700;font-size:14px">Link Web App (Apps Script) của Sheet đó</span>
         <input id="conn-url" type="text" value="${esc(c.url)}" placeholder="VD: https://script.google.com/macros/s/.../exec" style="width:100%;margin-top:6px"></label>
+      <label style="display:block"><span style="font-weight:700;font-size:14px">Mã kích hoạt (bên cung cấp gửi sau khi thanh toán)</span>
+        <input id="conn-key" type="text" value="${esc(c.key || '')}" placeholder="VD: 1A2B-3C4D-5E6F" style="width:100%;margin-top:6px;text-transform:uppercase"></label>
     </div>
     <div class="row-wrap" style="margin-top:10px">
       <button type="button" class="btn btn-green-grad" onclick="connConnect_()">🔗 Kết nối Google Sheet của bạn</button>
@@ -3383,17 +3385,18 @@ function connBoxHtml_() {
     </div>
     <p id="conn-note" style="font-size:13.5px;margin:8px 0 0"></p>
     <details style="margin-top:6px">
-      <summary style="font-weight:700;font-size:13.5px;cursor:pointer">Chưa có Sheet / chưa có link Web App? Xem 3 bước tạo (khoảng 5 phút)</summary>
+      <summary style="font-weight:700;font-size:13.5px;cursor:pointer">Chưa có Sheet / chưa có link Web App? Xem các bước tạo (khoảng 5 phút)</summary>
       <ol style="font-size:13.5px;line-height:1.7;margin:8px 0 0;padding-left:18px;color:var(--dim)">
         <li>Mở <a href="${TEMPLATE_SHEET_URL}" target="_blank" rel="noopener"><b>Sheet mẫu chuẩn</b></a> → menu Tệp (File) → Tạo bản sao (Make a copy) để lưu về Drive của trung tâm.</li>
         <li>Trong Sheet vừa sao chép: Tiện ích mở rộng (Extensions) → Apps Script → dán nội dung file Code.gs được bàn giao → Triển khai (Deploy) → Web App, chọn chạy bằng tài khoản của trung tâm và cho phép mọi người có link truy cập.</li>
-        <li>Sao chép link Web App (đuôi <b>/exec</b>) dán vào ô phía trên → bấm <b>Kết nối Google Sheet của bạn</b>.</li>
+        <li>Sao chép link Web App (đuôi <b>/exec</b>) dán vào ô phía trên.</li>
+        <li>Nhập <b>Mã kích hoạt</b> bên cung cấp gửi (mỗi trung tâm một mã riêng, tính theo Sheet của trung tâm) → bấm <b>Kết nối Google Sheet của bạn</b>. Chỉ cần kích hoạt 1 lần.</li>
       </ol>
     </details>
     <p class="sec-foot" style="margin-top:12px">🔒 Dữ liệu được lưu an toàn trên Google Sheet riêng của trung tâm — Bảo mật 100% — Không tốn phí duy trì hàng tháng</p>
   </div>`;
 }
-function connJsonp_(url, action) {
+function connJsonp_(url, action, params) {
   return new Promise((resolve, reject) => {
     const cb = '__conncb' + Math.floor(Math.random() * 1e9);
     const sc = document.createElement('script');
@@ -3401,31 +3404,50 @@ function connJsonp_(url, action) {
     function cleanup() { clearTimeout(to); try { delete window[cb]; } catch (e) {} sc.remove(); }
     window[cb] = d => { cleanup(); resolve(d); };
     sc.onerror = () => { cleanup(); reject(new Error('load')); };
-    sc.src = url + (url.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action) + '&callback=' + cb;
+    let q = 'action=' + encodeURIComponent(action) + '&callback=' + cb;
+    if (params) Object.keys(params).forEach(k => { if (params[k] != null && params[k] !== '') q += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k])); });
+    sc.src = url + (url.includes('?') ? '&' : '?') + q;
     document.head.appendChild(sc);
   });
 }
-function connNote_(html, ok) { const n = document.getElementById('conn-note'); if (!n) return; n.innerHTML = html; n.style.color = ok === true ? '#007A38' : ok === false ? '#C62828' : 'var(--dim)'; }
+function connNote_(html, ok) { const n = document.getElementById('conn-note'); if (!n) return; n.innerHTML = html; n.style.color = ok === true ? '#007A38' : ok === false ? '#C62828' : ok === 'warn' ? '#B26A00' : 'var(--dim)'; }
 function connUrlValid_(url) { return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(String(url || '').trim()); }
+async function connProbe_(url) {
+  try {
+    const r = await connJsonp_(url, 'getdashboard');
+    if (r && r.error === 'CHUA_KICH_HOAT') return { state: 'locked' };
+    if (r && r.ok !== false && r.kpis) return { state: 'ok', total: r.kpis.totalStudents };
+    return { state: 'fail' };
+  } catch (e) { return { state: 'fail' }; }
+}
 async function connTest_() {
   const url = (document.getElementById('conn-url').value || '').trim();
   if (!connUrlValid_(url)) { connNote_('⚠️ Link Web App chưa đúng định dạng — phải là link script.google.com/macros/s/.../exec', false); return; }
   connNote_('Đang kiểm tra kết nối tới Sheet của trung tâm…');
-  try {
-    const r = await connJsonp_(url, 'getdashboard');
-    if (r && r.ok !== false && r.kpis) connNote_('✅ Kết nối tốt — Sheet phản hồi bình thường, tổng số học viên đọc được: <b>' + (r.kpis.totalStudents != null ? r.kpis.totalStudents : '—') + '</b>.', true);
-    else throw new Error('bad');
-  } catch (e) { connNote_('❌ Chưa kết nối được. Anh/chị kiểm tra lại: Web App đã Deploy ở chế độ "Anyone" chưa, link có đúng đuôi /exec không.', false); }
+  const p = await connProbe_(url);
+  if (p.state === 'ok') connNote_('✅ Kết nối tốt — Sheet phản hồi bình thường, tổng số học viên đọc được: <b>' + (p.total != null ? p.total : '—') + '</b>.', true);
+  else if (p.state === 'locked') connNote_('🔒 Sheet phản hồi được nhưng <b>chưa kích hoạt</b> — nhập Mã kích hoạt ở ô phía trên rồi bấm "Kết nối Google Sheet của bạn".', 'warn');
+  else connNote_('❌ Chưa kết nối được. Anh/chị kiểm tra lại: Web App đã Deploy ở chế độ "Anyone" chưa, link có đúng đuôi /exec không.', false);
 }
 async function connConnect_() {
   const url = (document.getElementById('conn-url').value || '').trim();
   const sid = sheetIdFrom_(document.getElementById('conn-sheet').value || '');
   if (!connUrlValid_(url)) { connNote_('⚠️ Cần dán đúng Link Web App (script.google.com.../exec) thì app mới đọc/ghi được lên Sheet. Link Sheet ở ô trên chỉ để lưu tham chiếu.', false); return; }
   connNote_('Đang kiểm tra kết nối trước khi chuyển…');
-  try {
-    const r = await connJsonp_(url, 'getdashboard');
-    if (!r || r.ok === false || !r.kpis) throw new Error('bad');
-  } catch (e) { connNote_('❌ Link Web App chưa phản hồi đúng — chưa chuyển kết nối. Kiểm tra lại Deploy rồi thử lại.', false); return; }
+  let p = await connProbe_(url);
+  if (p.state === 'fail') { connNote_('❌ Link Web App chưa phản hồi đúng — chưa chuyển kết nối. Kiểm tra lại Deploy rồi thử lại.', false); return; }
+  if (p.state === 'locked') {
+    const keyEl = document.getElementById('conn-key');
+    const useKey = ((keyEl && keyEl.value) || '').trim() || connState_().key || '';
+    if (!useKey) { connNote_('🔒 Sheet này chưa kích hoạt — cần nhập Mã kích hoạt (mã do bên cung cấp gửi sau khi thanh toán, mỗi trung tâm một mã riêng).', 'warn'); return; }
+    connNote_('Đang gửi mã kích hoạt tới Sheet của trung tâm…');
+    let ar = null;
+    try { ar = await connJsonp_(url, 'activate', { key: useKey }); } catch (e) {}
+    if (!ar || ar.ok !== true) { connNote_('❌ ' + (ar && ar.error ? esc(ar.error) : 'Kích hoạt thất bại — kiểm tra lại mạng rồi thử lại.'), false); return; }
+    try { localStorage.setItem('tt_act_key', useKey); } catch (e) {}
+    p = await connProbe_(url);
+    if (p.state !== 'ok') { connNote_('Đã kích hoạt xong nhưng Sheet chưa phản hồi dữ liệu — chờ vài giây rồi bấm "Kiểm tra kết nối" lại.', 'warn'); return; }
+  }
   try {
     localStorage.setItem('hp_api_url', url);
     if (sid) localStorage.setItem('tt_sheet_id', sid); else localStorage.removeItem('tt_sheet_id');
@@ -3437,7 +3459,7 @@ async function connConnect_() {
 function connReset_() {
   if (!confirm('Ngắt kết nối Sheet riêng? App sẽ quay về nguồn dữ liệu mặc định.')) return;
   try {
-    localStorage.removeItem('hp_api_url'); localStorage.removeItem('tt_sheet_id');
+    localStorage.removeItem('hp_api_url'); localStorage.removeItem('tt_sheet_id'); localStorage.removeItem('tt_act_key');
     const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('hp_swr_')) ks.push(k); } ks.forEach(k => localStorage.removeItem(k));
   } catch (e) {}
   location.reload();
