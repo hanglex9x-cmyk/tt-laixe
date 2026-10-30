@@ -1,6 +1,6 @@
 // ============================================================
 // QUẢN LÝ TRUNG TÂM ĐÀO TẠO LÁI XE — Apps Script API (bản generic: mỗi trung tâm 1 Sheet riêng, tên + logo tự cấu hình)
-// Database: Google Sheet QuanLy_TrungTamLaiXe_HongPhuc
+// Database: Google Sheet RIÊNG của từng trung tâm (ID khai ở SHEET_ID bên dưới)
 // Web App: Execute as Me (hanglex9x@gmail.com), Anyone with link
 // ============================================================
 // BẢN TỐI ƯU TỐC ĐỘ (28/10/2026) — hợp đồng API giữ nguyên 100%:
@@ -14,6 +14,44 @@
 // ============================================================
 // ⚠️ MỖI TRUNG TÂM 1 SHEET RIÊNG: dán ID Sheet của trung tâm vào đây trước khi deploy
 const SHEET_ID = 'DAN_ID_GOOGLE_SHEET_CUA_TRUNG_TAM_VAO_DAY';
+
+// ---------- Kích hoạt bản quyền ----------
+// Mã kích hoạt được tính từ chính SHEET_ID của trung tâm + khóa bí mật dưới đây,
+// nên mỗi trung tâm một mã riêng — lấy mã của Sheet này dùng cho Sheet khác không được.
+// Bên cung cấp tạo mã bằng công cụ riêng (theo SHEET_ID) và gửi cho trung tâm sau khi thanh toán.
+// App chỉ chạy khi tab CauHinh có dòng MaKichHoat khớp mã đúng (nhập 1 lần trong app:
+// Cấu hình -> Kết nối Google Sheet -> nút Kết nối sẽ tự gọi action 'activate').
+const ACTIVATION_SALT = 'TTLX-2026-8481D250FDFE';
+function activationExpected_() {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(SHEET_ID) + '|' + ACTIVATION_SALT, Utilities.Charset.UTF_8);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += ('0' + (bytes[i] & 0xFF).toString(16)).slice(-2);
+  return hex.slice(0, 12).toUpperCase();
+}
+function normKey_(k) { return String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function cfgSheet_() { return ss_().getSheetByName('CAU_HINH') || ss_().getSheetByName('CauHinh'); }
+function isActivated_() {
+  const sh = cfgSheet_();
+  if (!sh) return false;
+  const vals = sh.getDataRange().getValues();
+  for (let i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]) === 'MaKichHoat') return normKey_(vals[i][1]) === activationExpected_();
+  }
+  return false;
+}
+function activateLicense_(params) {
+  const key = normKey_(params && params.key);
+  if (!key) return { ok: false, error: 'Thiếu mã kích hoạt' };
+  if (key !== activationExpected_()) return { ok: false, error: 'Mã kích hoạt không đúng cho Google Sheet này. Anh/chị kiểm tra lại mã, hoặc liên hệ bên cung cấp.' };
+  let sh = cfgSheet_();
+  if (!sh) { sh = ss_().insertSheet('CauHinh'); sh.getRange(1, 1, 1, 2).setValues([['Khoa', 'GiaTri']]); }
+  const vals = sh.getDataRange().getValues();
+  let row = -1;
+  for (let i = 1; i < vals.length; i++) if (String(vals[i][0]) === 'MaKichHoat') { row = i + 1; break; }
+  if (row > 0) sh.getRange(row, 2).setValue(key); else sh.appendRow(['MaKichHoat', key]);
+  try { logHistory_('activate', '', 'Kích hoạt bản quyền thành công'); } catch (e) {}
+  return { ok: true, activated: true };
+}
 
 const TARGET_KM = { 'B1': 710, 'B2': 810, 'C1': 825, 'C': 825 };
 const TUITION = { 'B1': 18000000, 'B2': 20000000, 'C1': 25000000, 'C': 24000000, 'Nâng dấu': 13000000 };
@@ -1251,6 +1289,8 @@ function readCacheKey_(a, params) {
 }
 function route_(action, params) {
   const a = String(action || '').toLowerCase();
+  if (a === 'activate') return activateLicense_(params || {});
+  if (!isActivated_()) return { ok: false, error: 'CHUA_KICH_HOAT', message: 'Ứng dụng chưa được kích hoạt. Vào mục Cấu hình → Kết nối Google Sheet, nhập mã kích hoạt rồi bấm Kết nối.' };
   if (READ_ACTIONS[a]) {
     const p = params || {};
     const key = readCacheKey_(a, p);
