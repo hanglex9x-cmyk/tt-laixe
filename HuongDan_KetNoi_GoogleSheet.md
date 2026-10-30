@@ -24,12 +24,15 @@ Triển khai mới → Ứng dụng web (Web app)**, chọn:
 - Ai có quyền truy cập: **Bất kỳ ai (Anyone)**
 → Sao chép **link Web App** (dạng `https://script.google.com/macros/s/.../exec`).
 
-**Bước 3 — Dán link vào app**
+**Bước 3 — Dán link vào app và kích hoạt**
 Mở app → mục **Cấu hình** → phần **"🔗 Kết nối Google Sheet của bạn"**:
 - Ô 1: dán link Google Sheet của trung tâm (để app ghi nhớ và mở nhanh Sheet).
 - Ô 2: dán **link Web App** ở Bước 2.
-- Bấm **Kiểm tra kết nối** (app báo ✅ và đọc thử tổng số học viên), rồi bấm
-  **Kết nối Google Sheet của bạn**. Xong — app từ giờ đọc/ghi trực tiếp trên Sheet của trung tâm.
+- Ô 3: nhập **Mã kích hoạt** — mã riêng của trung tâm do bên cung cấp gửi sau khi thanh toán
+  (mỗi trung tâm một mã, được tính theo chính Sheet của trung tâm nên không dùng chung được).
+- Bấm **Kiểm tra kết nối**, rồi bấm **Kết nối Google Sheet của bạn**. App tự kích hoạt trong
+  lần kết nối đầu tiên (chỉ cần làm 1 lần). Xong — app từ giờ đọc/ghi trực tiếp trên Sheet
+  của trung tâm.
 
 Muốn đổi Sheet khác hoặc ngắt kết nối: vào lại mục Cấu hình → **Ngắt kết nối**.
 
@@ -85,6 +88,11 @@ Không. Google Sheet + Apps Script miễn phí trong hạn mức của Google. A
 
 **Tôi muốn chuyển sang Sheet khác thì sao?**
 Vào Cấu hình → Ngắt kết nối → kết nối link Web App của Sheet mới. Dữ liệu ở Sheet cũ vẫn nguyên.
+
+**Mã kích hoạt là gì? Tôi chưa có mã thì sao?**
+Mã kích hoạt là mã bản quyền của riêng trung tâm, bên cung cấp tạo theo Sheet của trung tâm và
+gửi khi bàn giao. Chưa có mã thì app vẫn mở xem được bản demo, nhưng chưa đọc/ghi được dữ liệu
+thật trên Sheet. Cần cấp lại mã, anh/chị chỉ cần gửi lại link Google Sheet của trung tâm.
 
 **Lỡ xóa nhầm dữ liệu?**
 Google Sheet có lịch sử phiên bản (File → Version history) khôi phục được; ngoài ra hệ thống
