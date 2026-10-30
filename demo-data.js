@@ -8,8 +8,10 @@
   // Dọn cache SWR cũ (tránh khách đã mở bản cũ thấy dữ liệu lưu trên máy)
   try {
     const ks = [];
-    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (k.startsWith('hp_swr_') || k === 'hp_api_url')) ks.push(k); }
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('hp_swr_')) ks.push(k); }
     ks.forEach(k => localStorage.removeItem(k));
+    // Đã kết nối Sheet riêng (có hp_api_url) -> KHÔNG chạy dữ liệu mẫu, để app gọi thẳng Web App của trung tâm
+    if (localStorage.getItem('hp_api_url')) { window.__REAL_API_MODE__ = true; return; }
   } catch (e) {}
 
   const TODAY = '2026-10-27';
